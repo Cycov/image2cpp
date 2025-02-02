@@ -34,6 +34,37 @@ function bitswap(b) {
   return b;
 }
 
+// https://stackoverflow.com/a/17243070/2483060
+function RGBtoHSV(r, g, b) {
+  if (arguments.length === 1) {
+      g = r.g, b = r.b, r = r.r;
+  }
+  var max = Math.max(r, g, b), min = Math.min(r, g, b),
+      d = max - min,
+      h,
+      s = (max === 0 ? 0 : d / max),
+      v = max / 255;
+
+  switch (max) {
+      case min: h = 0; break;
+      case r: h = (g - b) + d * (g < b ? 6: 0); h /= 6 * d; break;
+      case g: h = (b - r) + d * 2; h /= 6 * d; break;
+      case b: h = (r - g) + d * 4; h /= 6 * d; break;
+  }
+
+  return {
+      h: h,
+      s: s,
+      v: v
+  };
+}
+
+function padNumber(value, padding) {
+  let output = value.toString();
+  while (output.length < padding) { output = ` ${output}`; }
+  return output;
+}
+
 const ConversionFunctions = {
   // Output the image as a string for horizontally drawing displays
   horizontal1bit(data, canvasWidth) {
@@ -188,6 +219,39 @@ const ConversionFunctions = {
     }
     return stringFromBytes;
   },
+
+  horizontalHSV(data, canvasWidth) {
+    let stringFromBytes = '';
+    let outputIndex = 0;
+
+    // format is RGBA, so move 4 steps per pixel
+    for (let index = 0; index < data.length; index += 4) {
+      // Get the RGB values
+      const r = data[index];
+      const g = data[index + 1];
+      const b = data[index + 2];
+      // calculate the 565 color value
+      const hsv = RGBtoHSV(r, g, b);
+      hsv.h = Math.floor(hsv.h * 100);
+      hsv.s = Math.floor(hsv.s * 100);
+      hsv.v = Math.floor(hsv.v * 100);
+
+      if (!settings.removeZeroesCommas) {
+        stringFromBytes += `{${padNumber(hsv.h, 3)}, ${padNumber(hsv.s, 3)}, ${padNumber(hsv.v, 3)}}, `;
+      } else {
+        stringFromBytes += byteSet;
+      }
+
+      // add newlines every 16 bytes
+      outputIndex++;
+      if (outputIndex >= canvasWidth) {
+        stringFromBytes += '\n';
+        outputIndex = 0;
+      }
+    }
+    return stringFromBytes;
+  },
+
   // Output the alpha mask as a string for horizontally drawing displays
   horizontalAlpha(data, canvasWidth) {
     let stringFromBytes = '';
